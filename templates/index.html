@@ -153,6 +153,36 @@
                 alert('Error: ' + (error.response?.data?.error || 'Gagal upload file'));
             }
         });
+
+                // Upload file handler
+                document.getElementById('fileInput').addEventListener('change', async function(e) {
+                                const file = e.target.files[0];
+                                if (!file) return;
+
+                                const formData = new FormData();
+                                formData.append('file', file);
+
+                                try {
+                                                    const response = await axios.post('/api/upload', formData, {
+                                                                            headers: {
+                                                                                                        'Content-Type': 'multipart/form-data'
+                                                                                                                                }
+                                                                                                });
+
+                                                    if (response.data.success) {
+                                                                            alert(`✅ ${response.data.message}\nTotal: ${response.data.total_rows} baris data`);
+                                                                            // Refresh semua data
+                                                                            await loadAllData();
+                                                                        }
+                                                } catch (error) {
+                                                    const errorMsg = error.response?.data?.error || 'Gagal upload file';
+                                                    alert('❌ Error: ' + errorMsg);
+                                                    console.error('Upload error:', error);
+                                                }
+
+                                // Reset input
+                                e.target.value = '';
+                            });
         
         // Load all data
         async function loadAllData() {
