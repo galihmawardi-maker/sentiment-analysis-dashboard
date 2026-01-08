@@ -170,11 +170,10 @@
                 const response = await axios.get('/api/stats');
                 const data = response.data;
                 
-                document.getElementById('totalData').textContent = data.total_data;
-                document.getElementById('positiveCount').textContent = data.sentiment_distribution.positive || 0;
-                document.getElementById('neutralCount').textContent = data.sentiment_distribution.neutral || 0;
-                document.getElementById('negativeCount').textContent = data.sentiment_distribution.negative || 0;
-            } catch (error) {
+                document.getElementById('totalData').textContent = (data.total_data || 0).toLocaleString();                document.getElementById('positiveCount').textContent = data.sentiment_distribution.positive || 0;
+                document.getElementById('positiveCount').textContent = (data.sentiment_distribution.positive || 0).toLocaleString();                document.getElementById('negativeCount').textContent = data.sentiment_distribution.negative || 0;
+                            document.getElementById('neutralCount').textContent = (data.sentiment_distribution.neutral || 0).toLocaleString();
+                document.getElementById('negativeCount').textContent = (data.sentiment_distribution.negative || 0).toLocaleString();
                 console.error('Error loading stats:', error);
             }
         }
