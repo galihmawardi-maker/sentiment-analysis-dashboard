@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Analisis Sentimen</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Navbar -->
+    <nav class="bg-gray-800 border-b border-gray-700">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <h1 class="text-2xl font-bold">📊 Dashboard Analisis Sentimen</h1>
+                <div class="flex items-center space-x-4">
+                    <input type="file" id="fileInput" accept=".csv" class="hidden">
+                    <button onclick="document.getElementById('fileInput').click()" 
+                            class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition">
+                        📁 Upload Data CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container mx-auto px-6 py-8">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">Total Data</p>
+                        <p id="totalData" class="text-3xl font-bold mt-2">-</p>
+                    </div>
+                    <div class="text-4xl">📝</div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">Positive</p>
+                        <p id="positiveCount" class="text-3xl font-bold mt-2 text-green-500">-</p>
+                    </div>
+                    <div class="text-4xl">😊</div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">Neutral</p>
+                        <p id="neutralCount" class="text-3xl font-bold mt-2 text-yellow-500">-</p>
+                    </div>
+                    <div class="text-4xl">😐</div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">Negative</p>
+                        <p id="negativeCount" class="text-3xl font-bold mt-2 text-red-500">-</p>
+                    </div>
+                    <div class="text-4xl">😞</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Pie Chart -->
+            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                <h2 class="text-xl font-bold mb-4">Distribusi Sentimen</h2>
+                <div id="sentimentPieChart" class="h-96"></div>
+            </div>
+            
+            <!-- Bar Chart -->
+            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                <h2 class="text-xl font-bold mb-4">Sentimen per Platform</h2>
+                <div id="platformBarChart" class="h-96"></div>
+            </div>
+        </div>
+
+        <!-- Timeline Chart -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+            <h2 class="text-xl font-bold mb-4">Timeline Sentimen</h2>
+            <div id="timelineChart" class="h-96"></div>
+        </div>
+
+        <!-- Model Comparison -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+            <h2 class="text-xl font-bold mb-4">Perbandingan Akurasi Model ML</h2>
+            <div id="modelComparisonChart" class="h-96"></div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold">Data Preview</h2>
+                <select id="sentimentFilter" class="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2">
+                    <option value="all">Semua Sentimen</option>
+                    <option value="positive">Positive</option>
+                    <option value="neutral">Neutral</option>
+                    <option value="negative">Negative</option>
+                </select>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-700">
+                        <tr>
+                            <th class="px-4 py-3 text-left">Post ID</th>
+                            <th class="px-4 py-3 text-left">User</th>
+                            <th class="px-4 py-3 text-left">Text</th>
+                            <th class="px-4 py-3 text-left">Sentimen</th>
+                            <th class="px-4 py-3 text-left">Platform</th>
+                            <th class="px-4 py-3 text-left">Likes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody" class="divide-y divide-gray-700">
+                        <tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">Upload data CSV untuk melihat preview</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="pagination" class="flex justify-center mt-4 space-x-2">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        
+        // Upload file handler
+        document.getElementById('fileInput').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await axios.post('/api/upload', formData);
+                if (response.data.success) {
+                    alert(response.data.message);
+                    loadAllData();
+                }
+            } catch (error) {
+                alert('Error: ' + (error.response?.data?.error || 'Gagal upload file'));
+            }
+        });
+        
+        // Load all data
+        async function loadAllData() {
+            await loadStats();
+            await loadSentimentChart();
+            await loadPlatformChart();
+            await loadTimelineChart();
+            await loadModelComparison();
+            await loadDataTable();
+        }
+        
+        // Load stats
+        async function loadStats() {
+            try {
+                const response = await axios.get('/api/stats');
+                const data = response.data;
+                
+                document.getElementById('totalData').textContent = data.total_data;
+                document.getElementById('positiveCount').textContent = data.sentiment_distribution.positive || 0;
+                document.getElementById('neutralCount').textContent = data.sentiment_distribution.neutral || 0;
+                document.getElementById('negativeCount').textContent = data.sentiment_distribution.negative || 0;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+        
+        // Load sentiment pie chart
+        async function loadSentimentChart() {
+            try {
+                const response = await axios.get('/api/sentiment-chart');
+                Plotly.newPlot('sentimentPieChart', response.data.data, response.data.layout, {responsive: true});
+            } catch (error) {
+                console.error('Error loading sentiment chart:', error);
+            }
+        }
+        
+        // Load platform bar chart
+        async function loadPlatformChart() {
+            try {
+                const response = await axios.get('/api/platform-chart');
+                Plotly.newPlot('platformBarChart', response.data.data, response.data.layout, {responsive: true});
+            } catch (error) {
+                console.error('Error loading platform chart:', error);
+            }
+        }
+        
+        // Load timeline chart
+        async function loadTimelineChart() {
+            try {
+                const response = await axios.get('/api/timeline-chart');
+                Plotly.newPlot('timelineChart', response.data.data, response.data.layout, {responsive: true});
+            } catch (error) {
+                console.error('Error loading timeline chart:', error);
+            }
+        }
+        
+        // Load model comparison
+        async function loadModelComparison() {
+            try {
+                const response = await axios.get('/api/model-comparison');
+                Plotly.newPlot('modelComparisonChart', response.data.data, response.data.layout, {responsive: true});
+            } catch (error) {
+                console.error('Error loading model comparison:', error);
+            }
+        }
+        
+        // Load data table
+        async function loadDataTable(page = 1) {
+            try {
+                const sentiment = document.getElementById('sentimentFilter').value;
+                const response = await axios.get(`/api/data-table?page=${page}&per_page=10&sentiment=${sentiment}`);
+                const data = response.data;
+                
+                const tbody = document.getElementById('dataTableBody');
+                tbody.innerHTML = '';
+                
+                data.data.forEach(row => {
+                    const tr = document.createElement('tr');
+                    const sentimentColors = {
+                        positive: 'text-green-500',
+                        neutral: 'text-yellow-500',
+                        negative: 'text-red-500'
+                    };
+                    
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 text-sm">${row.post_id}</td>
+                        <td class="px-4 py-3 text-sm">${row.user_handle}</td>
+                        <td class="px-4 py-3 text-sm max-w-md truncate">${row.text_clean}</td>
+                        <td class="px-4 py-3 text-sm ${sentimentColors[row.sentiment_label]}">${row.sentiment_label}</td>
+                        <td class="px-4 py-3 text-sm">${row.platform}</td>
+                        <td class="px-4 py-3 text-sm">${row.likes}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                
+                // Pagination
+                const pagination = document.getElementById('pagination');
+                pagination.innerHTML = '';
+                
+                for (let i = 1; i <= data.total_pages; i++) {
+                    const btn = document.createElement('button');
+                    btn.textContent = i;
+                    btn.className = `px-3 py-1 rounded ${i === page ? 'bg-blue-600' : 'bg-gray-700'} hover:bg-blue-500`;
+                    btn.onclick = () => loadDataTable(i);
+                    pagination.appendChild(btn);
+                }
+            } catch (error) {
+                console.error('Error loading data table:', error);
+            }
+        }
+        
+        // Sentiment filter change
+        document.getElementById('sentimentFilter').addEventListener('change', () => loadDataTable(1));
+        
+        // Load data on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadAllData();
+        });
+    </script>
+</body>
+</html>
